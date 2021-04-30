@@ -1,2 +1,8 @@
-# QSofaGL
-A PyQt widget for viewing SOFA simulation cameras
+# QSofaGLViewTools
+A small PyQt widget library for viewing SOFA simulation cameras
+
+## QSofaGLView
+
+## QSofaViewKeyboardController
+
+## QSofaViewXBoxController
