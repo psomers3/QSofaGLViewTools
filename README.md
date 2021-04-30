@@ -1,5 +1,5 @@
 # QSofaGLViewTools
-A small PyQt widget library for viewing SOFA simulation cameras and controlling them.
+A small PyQt widget library for viewing [SOFA simulation](https://www.sofa-framework.org/) cameras and controlling them.
 
 ### Install
 ```bash
