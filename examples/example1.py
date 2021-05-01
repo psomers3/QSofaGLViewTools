@@ -120,4 +120,8 @@ if __name__ == '__main__':
     app = QApplication(['Yo'])
     window = MainWindow()
     window.show()
+    # Unnecessarily make everything transparent because... well, just because  :)
+    window.setAttribute(Qt.WA_TranslucentBackground)
+    window.sofa_view.set_background_color([0, 0, 0, 0])
+    window.sofa_view.make_viewer_transparent()
     sys.exit(app.exec())
