@@ -55,8 +55,6 @@ class QSofaGLView(QOpenGLWidget):
     key_released = Signal(QKeyEvent)
     scroll_event = Signal(QWheelEvent)
     resizedGL = Signal(float, float)  # width, height
-    screen_shot_taken = Signal(object)
-    pointcloud_values_ready = Signal(object)
 
     def __init__(self,
                  sofa_visuals_node,
