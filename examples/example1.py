@@ -16,13 +16,14 @@ class SofaSim(QObject):
         super(SofaSim, self).__init__()
         # Register all the common component in the factory.
         importPlugin('SofaOpenglVisual')
-        importPlugin("SofaComponentAll")
         importPlugin("SofaGeneralLoader")
         importPlugin("SofaImplicitOdeSolver")
         importPlugin("SofaLoader")
         importPlugin("SofaSimpleFem")
         importPlugin("SofaBoundaryCondition")
         importPlugin("SofaMiscForceField")
+        importPlugin("SofaBaseLinearSolver")
+        importPlugin("SofaBaseMechanics")
         self.root = SCore.Node("Root")
         root = self.root
         root.gravity = [0, -1., 0]
@@ -114,6 +115,8 @@ class MainWindow(QMainWindow):
                 self.sofa_sim.stop_sim()
             else:
                 self.sofa_sim.start_sim()
+        elif QKeyEvent.key() == Qt.Key_J:
+            self.sofa_view.save_image("test.png")
 
 
 if __name__ == '__main__':

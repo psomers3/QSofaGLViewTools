@@ -5,7 +5,6 @@ import Sofa.SofaGL as SGL
 import Sofa
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from OpenGL.GLUT import *
 import numpy as np
 from typing import List
 from PIL import Image
@@ -74,8 +73,6 @@ class QSofaGLView(QOpenGLWidget):
 
     def make_viewer_transparent(self, make_transparent=True):
         """ This will only make the background of the viewer transparent if the background_color alpha is set to 0"""
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_AlwaysStackOnTop)
 
     def set_background_color(self, color):
         """
