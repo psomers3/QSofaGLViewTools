@@ -124,7 +124,7 @@ if __name__ == '__main__':
     window = MainWindow()
     window.show()
     # Unnecessarily make everything transparent because... well, just because  :)
-    window.setAttribute(Qt.WA_TranslucentBackground)
+    window.setAttribute(Qt.WA_TranslucentBackground)  # Need to set underlying widgets transparent as well
     window.sofa_view.set_background_color([0, 0, 0, 0])
-    window.sofa_view.make_viewer_transparent()
+    window.sofa_view.make_viewer_transparent(True)
     sys.exit(app.exec())
