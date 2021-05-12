@@ -73,6 +73,8 @@ class QSofaGLView(QOpenGLWidget):
 
     def make_viewer_transparent(self, make_transparent=True):
         """ This will only make the background of the viewer transparent if the background_color alpha is set to 0"""
+        self.setAttribute(Qt.WA_TranslucentBackground, make_transparent)
+        self.setAttribute(Qt.WA_AlwaysStackOnTop, make_transparent)
 
     def set_background_color(self, color):
         """
