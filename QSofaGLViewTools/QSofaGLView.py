@@ -3,6 +3,7 @@ from qtpy.QtCore import *
 from qtpy.QtGui import *
 import Sofa.SofaGL as SGL
 import Sofa
+from SofaRuntime import importPlugin
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
@@ -56,20 +57,117 @@ class QSofaGLView(QOpenGLWidget):
     resizedGL = Signal(float, float)  # width, height
 
     def __init__(self,
-                 sofa_visuals_node,
-                 camera,  # Sofa.Core.BaseCamera
-                 size=(800, 600)):
+                 sofa_visuals_node: Sofa.Core.Node,
+                 camera: Sofa.Components.BaseCamera,
+                 size: tuple = (800, 600)):
+        """
+
+        Parameters
+        ----------
+        sofa_visuals_node : Sofa.Core.Node
+                The SOFA Node that will be transversed for calculating the visuals.
+        camera : Sofa.Components.BaseCamera
+                The SOFA BaseCamera object that is used for calculating the view
+        size : Tuple[int, int]
+                Minimum view size of (width, height) in pixels. Default = (800, 600)
+        """
 
         super(QSofaGLView, self).__init__()
         self.visuals_node = sofa_visuals_node
         self.camera = camera
-        self.setMinimumSize(800, 600)
+        self.camera_position = camera.position
+        self.camera_orientation = camera.orientation
+        self.dofs = None
+        self.setMinimumSize(*size)
         self.resize(*size)
         self.z_far = camera.zFar  # get these values using self.z***.value because they are sofa Data objects
         self.z_near = camera.zNear
         self.setFocusPolicy(Qt.StrongFocus)
         self.background_color = [1, 1, 1, 0]
         self.spheres = []
+        self.setWindowFlag(Qt.NoDropShadowWindowHint)
+
+    @staticmethod
+    def create_view_and_camera(node: Sofa.Core.Node,
+                               sofa_visuals_node: Sofa.Core.Node = None,
+                               initial_position: list = [0, 15, 0, -0.70710678, 0., 0, 0.70710678],
+                               size: tuple = (800, 600),
+                               camera_kwargs: dict = {'distance': 1500, "fieldOfView": 45, "computeZClip": True}
+                               ):
+        """
+        Function to create a QSofaGLViewer object and place a camera in it. This will also create a MechanicalObject to
+        control the DOFs of the camera.
+
+        Parameters
+        ----------
+        node : Sofa.Core.Node
+                The Simulation Node to add the camera and MechanicalObject to.
+        sofa_visuals_node : Sofa.Core.Node
+                The SOFA Node that will be transversed for calculating the visuals. If left as None, it will use node.
+        initial_position : list
+                initial position of the camera [x, y, z, quaternion]
+        size : tuple[int, int]
+                Minimum view size of (width, height) in pixels. Default = (800, 600)
+        camera_kwargs : dict
+                dictionary of keywords to pass to construction of the Sofa.Components.InteractiveCamera object. Do not
+                pass "name", "position", or "orientation".
+        Returns
+        -------
+            A tuple containing (QSofaGLView, Sofa.Components.InteractiveCamera, Sofa.Components.MechanicalObject)
+            The MechanicalObject will also be available within the QSofaGLView as a parameter "dofs"
+
+        """
+        importPlugin("SofaGeneralEngine")
+        subnode = node.addChild("camera_4_QSofaGLView")
+        dofs = subnode.addObject("MechanicalObject", name="camera_dofs", template="Rigid3d", position=[0, 15, 0, -0.70710678, 0., 0, 0.70710678])
+        subnode.addObject("RigidToQuatEngine", name="camera_engine", rigids="@camera_dofs.position")
+        camera = subnode.addObject("InteractiveCamera", name="camera", position="@camera_engine.positions",
+                                   orientation="@camera_engine.orientations", **camera_kwargs)
+
+        if sofa_visuals_node is None:
+            sofa_visuals_node = node
+        view = QSofaGLView(sofa_visuals_node=sofa_visuals_node, camera=camera, size=size)
+        view.dofs = dofs
+        view.camera_position = dofs.position
+        return view, camera, dofs
+
+    def update_position(self, new_position):
+        """
+
+        Parameters
+        ----------
+        new_position : np.array
+                a numpy array of [x,y,z]
+
+        Returns
+        -------
+            nothing. updates the camera position
+        """
+        if self.dofs is not None:
+            current_pos = self.dofs.position.array().copy()
+            current_pos[0, 0:3] = new_position
+            self.dofs.position = list(current_pos)
+        else:
+            self.camera.position = list(new_position)
+
+    def update_orientation(self, new_orientation):
+        """
+
+        Parameters
+        ----------
+        new_orientation : np.array
+                a numpy array of [x,y,z, w] quaternion
+
+        Returns
+        -------
+            nothing. updates the camera orientation
+        """
+        if self.dofs is not None:
+            current_pos = self.dofs.position.array().copy()
+            current_pos[0, 3:] = new_orientation
+            self.dofs.position = list(current_pos)
+        else:
+            self.camera.orientation = list(new_orientation)
 
     def make_viewer_transparent(self, make_transparent=True):
         """ This will only make the background of the viewer transparent if the background_color alpha is set to 0"""

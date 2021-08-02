@@ -142,11 +142,10 @@ class QSofaViewKeyboardController(QObject):
         additional_rotation = current_rotational_speed * time_since_last_update
         rotation = transform.Rotation.from_euler("XYZ", additional_rotation, degrees=True)
         self.viewers[0].camera.rotate(rotation.as_quat().tolist())
-        current_orientation = transform.Rotation.from_quat(self.viewers[0].camera.orientation.array())
-
+        current_orientation = transform.Rotation.from_quat(self.viewers[0].camera_orientation.array())
         # calculate the new position
-        current_position = self.viewers[0].camera.position.array()
         current_translational_speed = np.array(self.current_translational_speed) * self.translate_rate_limit
-        self.viewers[0].camera.position = self.viewers[0].camera.position.array()
-        self.viewers[0].camera.position = list(
-            current_position + current_orientation.apply(current_translational_speed * time_since_last_update))
+        current_pos = self.viewers[0].camera_position.array()
+        current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
+        self.viewers[0].update_position(current_pos[:3] + current_orientation.apply(current_translational_speed * time_since_last_update))
+        self.viewers[0].update_orientation(current_orientation.as_quat())
