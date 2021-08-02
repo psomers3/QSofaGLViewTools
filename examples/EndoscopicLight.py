@@ -59,7 +59,38 @@ class SofaSim(QObject):
 
         # place light and a camera
         self.root.addObject("LightManager")
-        self.root.addObject("DirectionalLight", direction=[0, 1, 0])
+        self.viewer, self.camera, self.camera_dofs = QSofaGLView.create_view_and_camera(self.root,
+                                                                                        initial_position=[0, 15, 0,
+                                                                                                          -0.70710678,
+                                                                                                          0., 0,
+                                                                                                          0.70710678])
+
+        # ADD ENDOSCOPIC CAMERA
+        # **********************************************************
+        light = self.root.addChild("light")
+        light.addObject("RigidToQuatEngine", name="camera_engine", rigids=self.camera_dofs.getLinkPath() + ".position")
+        light.addObject("TransformEngine", name="origin", template="Rigid3d",
+                        input_position=self.camera_dofs.getLinkPath() + '.position',
+                        translation="@camera_engine.positions", quaternion="@camera_engine.orientations", inverse=True)
+        light.addObject("TransformEngine", name="offset_light", template="Rigid3d",
+                        input_position="@origin.output_position", rotation=[0, 0, 0], translation=[0, 0, -5])
+        light.addObject("TransformEngine", name="offset_light2", template="Rigid3d",
+                        input_position="@offset_light.output_position", quaternion="@camera_engine.orientations",
+                        translation="@camera_engine.positions")
+        light.addObject("MechanicalObject", name="offset_focus_point", template="Rigid3d",
+                        position="@offset_light2.output_position",
+                        showObject=False)
+
+        light.addObject("RigidToQuatEngine", name="offset_engine", rigids="@offset_focus_point.position")
+        self.spotlight = light.addObject("SpotLight",
+                                         name='spotlight',
+                                         direction="@offset_engine.positions",
+                                         # color="0 0 1",
+                                         lookat=True,
+                                         cutoff=20,  # angle in degrees
+                                         position="@camera_engine.positions",
+                                         exponent=1)
+        # **********************************************************
 
         self.simulation_timer = QTimer()
         self.simulation_timer.timeout.connect(self.step_sim)
@@ -93,14 +124,10 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
         self.sofa_sim = SofaSim()  # class to hold the scene
         # create an opengl view to display a node from sofa and control a camera
-        self.sofa_view, self.camera, self.dofs = QSofaGLView.create_view_and_camera(node=self.sofa_sim.root,
-                                                                                    initial_position=[0, 15, 0, 0, 0, 0,
-                                                                                                      1],
-                                                                                    camera_kwargs={'distance': 1500,
-                                                                                                   "fieldOfView": 45,
-                                                                                                   "computeZClip": True})
+
         self.sofa_sim.init_sim()  # initialize the scene
 
+        self.sofa_view = self.sofa_sim.viewer
 
         self.sofa_view.set_background_color([0,0,1,1])  # [1,1,1,1] for white
 
