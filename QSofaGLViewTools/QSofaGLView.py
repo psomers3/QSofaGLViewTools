@@ -111,10 +111,12 @@ class QSofaGLView(QOpenGLWidget):
         camera_kwargs : dict
                 dictionary of keywords to pass to construction of the Sofa.Components.InteractiveCamera object. Do not
                 pass "name", "position", or "orientation".
+
         Returns
         -------
-            A tuple containing (QSofaGLView, Sofa.Components.InteractiveCamera, Sofa.Components.MechanicalObject)
-            The MechanicalObject will also be available within the QSofaGLView as a parameter "dofs"
+            tuple
+                A tuple containing (QSofaGLView, Sofa.Components.InteractiveCamera, Sofa.Components.MechanicalObject)
+                The MechanicalObject will also be available within the QSofaGLView as a parameter "dofs"
 
         """
         importPlugin("SofaGeneralEngine")
