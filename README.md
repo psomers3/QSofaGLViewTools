@@ -18,7 +18,7 @@ viewer, camera, camera_dofs = QSofaGLView.create_view_and_camera(rootNode, initi
 ```
 
 ## QSofaViewKeyboardController
-Use the keyboard to control the view from a camera with the arrow keys and awsd keys.
+Use the keyboard to control the view from a camera with the arrow keys (rotations) and awsd keys (translations). To get the 3rd axes for both rotation and translation, hold the ctrl key.
 ```python
 view_ctrl = QSofaViewKeyboardController()
 view_ctrl.set_viewers(viewer)
