@@ -94,6 +94,8 @@ class QSofaGLView(QOpenGLWidget):
         self.setWindowFlag(Qt.NoDropShadowWindowHint)
         self._recording = False
         self._video_file = None  # type: str
+        self._save_img = False
+        self._images = []
 
     @staticmethod
     def create_view_and_camera(node: Sofa.Core.Node,
@@ -329,14 +331,18 @@ class QSofaGLView(QOpenGLWidget):
             screen_positions[i] = gluProject(points[i][0], points[i][1], points[i][2])
         return screen_positions
 
-    def start_recording(self, video_file: str = 'test_vid.avi'):
+    def start_recording(self, video_file: str = 'test_vid.avi', save_separate_images=False):
         """
         Start recording screenshots to create a video.
         :param video_file: path to video file to save.
+        :param save_separate_images: whether or not to save each screenshot as it records. Better if running out of
+                                     RAM for long videos, but is slower.
         """
         if self._recording:
             return
-        os.mkdir('tmp_screenshots')
+        self._save_img = save_separate_images
+        if self._save_img:
+            os.mkdir('tmp_screenshots')
         self._video_file = video_file
         self._recording = True
         self.repainted.connect(self._rec_save_img)
@@ -350,23 +356,34 @@ class QSofaGLView(QOpenGLWidget):
             return
         self._recording = False
         self.repainted.disconnect(self._rec_save_img)
-        images = [os.path.join("tmp_screenshots", x) for x in os.listdir('tmp_screenshots')]
-        times = [float(re.findall('(\d+\.\d+).png', x)[0]) for x in images]
-        avg = np.array(times)
-        fps = 1/(np.average(np.diff(avg)))
-        frame = cv2.imread(images[0])
-        height, width, layers = frame.shape
-        video = cv2.VideoWriter(self._video_file, 0, fps*2, (width, height))
+        if self._save_img:
+            images = [os.path.join("tmp_screenshots", x) for x in os.listdir('tmp_screenshots')]
+            times = [float(re.findall('(\d+\.\d+).png', x)[0]) for x in images]
+            frame = cv2.imread(images[0])
+        else:
+            images = [x[1] for x in self._images]
+            times = [x[0] for x in self._images]
+            frame = images[0]
 
-        for image in images:
-            video.write(cv2.imread(image))
+        avg = np.array(times)
+        fps = 1 / (np.average(np.diff(avg)))
+        height, width, layers = frame.shape
+        video = cv2.VideoWriter(self._video_file, 0, fps, (width, height))
+        if self._save_img:
+            [video.write(cv2.imread(image)) for image in images]
+        else:
+            [video.write(image) for image in images]
 
         cv2.destroyAllWindows()
         video.release()
-        shutil.rmtree('tmp_screenshots')
+        if self._save_img:
+            shutil.rmtree('tmp_screenshots')
 
     def _rec_save_img(self):
-        self.save_image(f'tmp_screenshots/{time.time()}.png')
+        if self._save_img:
+            self.save_image(f'tmp_screenshots/{time.time()}.png')
+        else:
+            self._images.append((time.time(), self.get_screen_shot()))
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         self.key_pressed.emit(a0)
