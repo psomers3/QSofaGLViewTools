@@ -334,6 +334,8 @@ class QSofaGLView(QOpenGLWidget):
         Start recording screenshots to create a video.
         :param video_file: path to video file to save.
         """
+        if self._recording:
+            return
         os.mkdir('tmp_screenshots')
         self._video_file = video_file
         self._recording = True
