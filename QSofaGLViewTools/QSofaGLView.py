@@ -9,6 +9,11 @@ from OpenGL.GLU import *
 import numpy as np
 from typing import List
 from PIL import Image
+import os
+import cv2
+import time
+import re
+import shutil
 
 
 def quaternion_rotation_matrix(Q):
@@ -55,6 +60,7 @@ class QSofaGLView(QOpenGLWidget):
     key_released = Signal(QKeyEvent)
     scroll_event = Signal(QWheelEvent)
     resizedGL = Signal(float, float)  # width, height
+    repainted = Signal()
 
     def __init__(self,
                  sofa_visuals_node: Sofa.Core.Node,
@@ -86,13 +92,15 @@ class QSofaGLView(QOpenGLWidget):
         self.background_color = [1, 1, 1, 0]
         self.spheres = []
         self.setWindowFlag(Qt.NoDropShadowWindowHint)
+        self._recording = False
+        self._video_file = None  # type: str
 
     @staticmethod
     def create_view_and_camera(node: Sofa.Core.Node,
                                sofa_visuals_node: Sofa.Core.Node = None,
                                initial_position: list = [0, 15, 0, -0.70710678, 0., 0, 0.70710678],
                                size: tuple = (800, 600),
-                               camera_kwargs: dict = {'distance': 1500, "fieldOfView": 45, "computeZClip": True}
+                               camera_kwargs: dict = {'distance': 5000, "fieldOfView": 45, "computeZClip": True}
                                ):
         """
         Function to create a QSofaGLViewer object and place a camera in it. This will also create a MechanicalObject to
@@ -119,6 +127,7 @@ class QSofaGLView(QOpenGLWidget):
                 The MechanicalObject will also be available within the QSofaGLView as a parameter "dofs"
 
         """
+
         importPlugin("SofaGeneralEngine")
         subnode = node.addChild("camera_4_QSofaGLView")
         dofs = subnode.addObject("MechanicalObject", name="camera_dofs", template="Rigid3d", position=[0, 15, 0, -0.70710678, 0., 0, 0.70710678])
@@ -226,6 +235,7 @@ class QSofaGLView(QOpenGLWidget):
         camera_mvm = self.camera.getOpenGLModelViewMatrix()
         glMultMatrixd(camera_mvm)
         SGL.draw(self.visuals_node)
+        self.repainted.emit()
 
     def resizeGL(self, w: int, h: int) -> None:
         self.camera.widthViewport = w
@@ -278,8 +288,24 @@ class QSofaGLView(QOpenGLWidget):
         :param filename: name of file to save image to. extension determines file type (i.e. "pic.png")
         """
         image = self.get_screen_shot(return_with_alpha=True)
-        img = Image.fromarray(image)
-        img.save(filename)
+        Image.fromarray(image).save(filename)
+
+    def save_depth_image(self, filename, scaled=True):
+        """
+        Save pixel depth values to file
+        :param filename: name of file to save depth image to. Extension determines file type (i.e. "pic.jpg")
+        :param scaled: whether or not the depths are scaled for better viewing.
+        """
+        image = self.get_depth_image(scaled_for_viewing=scaled)
+        Image.fromarray(image).save(filename)
+
+    def save_depths(self, filename):
+        """
+        Save pixel depth values to file
+        :param filename: name of file to save depths to. extension determines file type (i.e. "pic.jpg")
+        """
+        depths = self.get_depth_map().astype(np.uint16)
+        Image.fromarray(depths).save(filename)
 
     def get_screen_locations(self, points: List[List[float]]):
         """
@@ -302,6 +328,43 @@ class QSofaGLView(QOpenGLWidget):
         for i in range(len(points)):
             screen_positions[i] = gluProject(points[i][0], points[i][1], points[i][2])
         return screen_positions
+
+    def start_recording(self, video_file: str = 'test_vid.avi'):
+        """
+        Start recording screenshots to create a video.
+        :param video_file: path to video file to save.
+        """
+        os.mkdir('tmp_screenshots')
+        self._video_file = video_file
+        self._recording = True
+        self.repainted.connect(self._rec_save_img)
+
+    def stop_recording(self):
+        """
+        Stop recording for video and combine into final video.
+        TODO: allow for adjusting of fps setting.
+        """
+        if not self._recording:
+            return
+        self._recording = False
+        self.repainted.disconnect(self._rec_save_img)
+        images = [os.path.join("tmp_screenshots", x) for x in os.listdir('tmp_screenshots')]
+        times = [float(re.findall('(\d+\.\d+).png', x)[0]) for x in images]
+        avg = np.array(times)
+        fps = 1/(np.average(np.diff(avg)))
+        frame = cv2.imread(images[0])
+        height, width, layers = frame.shape
+        video = cv2.VideoWriter(self._video_file, 0, fps*2, (width, height))
+
+        for image in images:
+            video.write(cv2.imread(image))
+
+        cv2.destroyAllWindows()
+        video.release()
+        shutil.rmtree('tmp_screenshots')
+
+    def _rec_save_img(self):
+        self.save_image(f'tmp_screenshots/{time.time()}.png')
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         self.key_pressed.emit(a0)
