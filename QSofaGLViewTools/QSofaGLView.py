@@ -62,6 +62,11 @@ class QSofaGLView(QOpenGLWidget):
     resizedGL = Signal(float, float)  # width, height
     repainted = Signal()
 
+    DTYPES = {np.uint8: GL_UNSIGNED_BYTE,
+              np.float32: GL_FLOAT,
+              np.uint16: GL_UNSIGNED_SHORT}
+
+
     def __init__(self,
                  sofa_visuals_node: Sofa.Core.Node,
                  camera: Sofa.Components.BaseCamera,
@@ -246,7 +251,12 @@ class QSofaGLView(QOpenGLWidget):
         self.resizedGL.emit(w, h)
 
     def get_depth_image(self, scaled_for_viewing=True, return_type=np.uint16):
-        """" Get the depth map as an array for displaying"""
+        """
+         Get the depth map as an array for displaying
+        :param scaled_for_viewing:
+        :param return_type: either np.uint8 or np.uint16
+        :return:
+        """
         depth_image = self.get_depth_map()
         depth_image = (depth_image - depth_image.min()) / (depth_image.max() - depth_image.min())
         if scaled_for_viewing:
@@ -270,43 +280,49 @@ class QSofaGLView(QOpenGLWidget):
         far, near = self.z_far.value, self.z_near.value
         return -far * near / (far + image * (near - far))
 
-    def get_screen_shot(self, return_with_alpha=False):
-        """ Returns the RGB image array for the current view """
+    def get_screen_shot(self, return_with_alpha=False, dtype: np.dtype = np.uint8):
+        """
+         Returns the RGB image array for the current view
+        :param return_with_alpha:
+        :param return_type:
+        :return: numpy array representing the screen view with provided dtype
+        """
+
         self.makeCurrent()
         # _, _, width, height = glGetIntegerv(GL_VIEWPORT)
         width, height = self.width(), self.height()
         if return_with_alpha:
-            buff = glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE)
-            image = np.frombuffer(buff, dtype=np.uint8)
+            buff = glReadPixels(0, 0, width, height, GL_RGBA, self.DTYPES[dtype])
+            image = np.frombuffer(buff, dtype=dtype)
             return np.flipud(image.reshape(height, width, 4))
         else:
-            buff = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
-            image = np.frombuffer(buff, dtype=np.uint8)
+            buff = glReadPixels(0, 0, width, height, GL_RGB, self.DTYPES[dtype])
+            image = np.frombuffer(buff, dtype=dtype)
             return np.flipud(image.reshape(height, width, 3))
 
-    def save_image(self, filename):
+    def save_image(self, filename, dtype: np.dtype = np.uint16):
         """
         Save image to file
         :param filename: name of file to save image to. extension determines file type (i.e. "pic.png")
         """
-        image = self.get_screen_shot(return_with_alpha=True)
+        image = self.get_screen_shot(return_with_alpha=True, dtype=dtype)
         Image.fromarray(image).save(filename)
 
-    def save_depth_image(self, filename, scaled=True):
+    def save_depth_image(self, filename, scaled=True, dtype: np.dtype = np.uint16):
         """
         Save pixel depth values to file
         :param filename: name of file to save depth image to. Extension determines file type (i.e. "pic.jpg")
         :param scaled: whether or not the depths are scaled for better viewing.
         """
-        image = self.get_depth_image(scaled_for_viewing=scaled)
+        image = self.get_depth_image(scaled_for_viewing=scaled, return_type=dtype)
         Image.fromarray(image).save(filename)
 
-    def save_depths(self, filename):
+    def save_depths(self, filename, dtype: np.dtype = np.uint16):
         """
         Save pixel depth values to file
         :param filename: name of file to save depths to. extension determines file type (i.e. "pic.jpg")
         """
-        depths = self.get_depth_map().astype(np.uint16)
+        depths = self.get_depth_map(dtype=dtype)
         Image.fromarray(depths).save(filename)
 
     def get_screen_locations(self, points: List[List[float]]):
@@ -334,6 +350,7 @@ class QSofaGLView(QOpenGLWidget):
     def start_recording(self, video_file: str = 'test_vid.avi', save_separate_images=False):
         """
         Start recording screenshots to create a video.
+        # TODO: add ffmpeg option for lossless recordings.
         :param video_file: path to video file to save.
         :param save_separate_images: whether or not to save each screenshot as it records. Better if running out of
                                      RAM for long videos, but is slower.
@@ -381,9 +398,9 @@ class QSofaGLView(QOpenGLWidget):
 
     def _rec_save_img(self):
         if self._save_img:
-            self.save_image(f'tmp_screenshots/{time.time()}.png')
+            self.save_image(f'tmp_screenshots/{time.time()}.png', dtype=np.uint16)
         else:
-            self._images.append((time.time(), self.get_screen_shot()))
+            self._images.append((time.time(), self.get_screen_shot(dtype=np.uint16)))
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         self.key_pressed.emit(a0)
