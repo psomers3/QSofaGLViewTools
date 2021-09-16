@@ -60,9 +60,7 @@ class SofaSim(QObject):
         # place light and a camera
         self.root.addObject("LightManager")
         self.root.addObject("DirectionalLight", direction=[0, 1, 0])
-        self.root.addObject("InteractiveCamera", name="camera", position=[0, 15, 0],
-                            lookAt=[0, 0, 0], distance=37,
-                            fieldOfView=45)
+        self.root.addObject("InteractiveCamera", name="camera", fieldOfView=45)
 
         self.simulation_timer = QTimer()
         self.simulation_timer.timeout.connect(self.step_sim)
@@ -98,8 +96,10 @@ class MainWindow(QMainWindow):
         self.sofa_sim.init_sim()  # initialize the scene
 
         # create an opengl view to display a node from sofa and control a camera
-        self.sofa_view = QSofaGLView(sofa_visuals_node=self.sofa_sim.root, camera=self.sofa_sim.root.camera)
-        self.sofa_view.set_background_color([0,0,1,1])  # [1,1,1,1] for white
+        self.sofa_view = QSofaGLView(sofa_visuals_node=self.sofa_sim.root,
+                                     camera=self.sofa_sim.root.camera,
+                                     auto_place_camera=True)
+        self.sofa_view.set_background_color([0, 0, 1, 1])  # [1,1,1,1] for white
 
         # set the view to be the main widget of the window. In the future, this should be done in a layout
         self.setCentralWidget(self.sofa_view)
@@ -114,6 +114,7 @@ class MainWindow(QMainWindow):
 
     def keyPressEvent(self, QKeyEvent):
         if QKeyEvent.key() == Qt.Key_Space:
+            self.sofa_view.auto_place_camera()
             if self.sofa_sim.is_animating:
                 self.sofa_sim.stop_sim()
             else:

@@ -16,6 +16,9 @@ import re
 import shutil
 
 
+sim = Sofa.Simulation
+
+
 def quaternion_rotation_matrix(Q):
     """
     https://automaticaddison.com/how-to-convert-a-quaternion-to-a-rotation-matrix/
@@ -66,11 +69,11 @@ class QSofaGLView(QOpenGLWidget):
               np.float32: GL_FLOAT,
               np.uint16: GL_UNSIGNED_SHORT}
 
-
     def __init__(self,
                  sofa_visuals_node: Sofa.Core.Node,
                  camera: Sofa.Components.BaseCamera,
-                 size: tuple = (800, 600)):
+                 size: tuple = (800, 600),
+                 auto_place_camera: bool = False):
         """
 
         Parameters
@@ -81,9 +84,14 @@ class QSofaGLView(QOpenGLWidget):
                 The SOFA BaseCamera object that is used for calculating the view
         size : Tuple[int, int]
                 Minimum view size of (width, height) in pixels. Default = (800, 600)
+        auto_place_camera : bool
+                Whether or not to override the camera position and try to auto-place it for viewing the simulation. This
+                will occur everytime the GLView is initialized.
         """
 
         super(QSofaGLView, self).__init__()
+
+        self.auto_place = auto_place_camera
         self.visuals_node = sofa_visuals_node
         self.camera = camera
         self.camera_position = camera.position
@@ -105,7 +113,7 @@ class QSofaGLView(QOpenGLWidget):
     @staticmethod
     def create_view_and_camera(node: Sofa.Core.Node,
                                sofa_visuals_node: Sofa.Core.Node = None,
-                               initial_position: list = [0, 15, 0, -0.70710678, 0., 0, 0.70710678],
+                               initial_position: list = None,
                                size: tuple = (800, 600),
                                camera_kwargs: dict = {'distance': 5000, "fieldOfView": 45, "computeZClip": True}
                                ):
@@ -137,7 +145,7 @@ class QSofaGLView(QOpenGLWidget):
 
         importPlugin("SofaGeneralEngine")
         subnode = node.addChild("camera_4_QSofaGLView")
-        dofs = subnode.addObject("MechanicalObject", name="camera_dofs", template="Rigid3d", position=[0, 15, 0, -0.70710678, 0., 0, 0.70710678])
+        dofs = subnode.addObject("MechanicalObject", name="camera_dofs", template="Rigid3d", position=initial_position)
         subnode.addObject("RigidToQuatEngine", name="camera_engine", rigids="@camera_dofs.position")
         camera = subnode.addObject("InteractiveCamera", name="camera", position="@camera_engine.positions",
                                    orientation="@camera_engine.orientations", **camera_kwargs)
@@ -228,6 +236,19 @@ class QSofaGLView(QOpenGLWidget):
         SGL.glewInit()
         Sofa.Simulation.initVisual(self.visuals_node)
         Sofa.Simulation.initTextures(self.visuals_node)
+        if self.auto_place:
+            self.visuals_node.init()
+            self.auto_place_camera()
+
+    def auto_place_camera(self):
+        """
+        Place the camera automatically such that it is outside the bounding box of the visuals node and looking at the
+        center.
+        Returns
+        -------
+        None
+        """
+        self.camera.setDefaultView()
 
     def paintGL(self):
         self.makeCurrent()
