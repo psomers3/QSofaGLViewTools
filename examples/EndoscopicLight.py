@@ -59,11 +59,7 @@ class SofaSim(QObject):
 
         # place light and a camera
         self.root.addObject("LightManager")
-        self.viewer, self.camera, self.camera_dofs = QSofaGLView.create_view_and_camera(self.root,
-                                                                                        initial_position=[0, 15, 0,
-                                                                                                          -0.70710678,
-                                                                                                          0., 0,
-                                                                                                          0.70710678])
+        self.viewer, self.camera, self.camera_dofs = QSofaGLView.create_view_and_camera(self.root)
 
         # ADD ENDOSCOPIC CAMERA
         # **********************************************************

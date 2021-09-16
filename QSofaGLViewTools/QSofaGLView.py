@@ -128,7 +128,7 @@ class QSofaGLView(QOpenGLWidget):
         sofa_visuals_node : Sofa.Core.Node
                 The SOFA Node that will be transversed for calculating the visuals. If left as None, it will use node.
         initial_position : list
-                initial position of the camera [x, y, z, quaternion]
+                initial position of the camera [x, y, z, quaternion]. If None, will try it's best to place the camera.
         size : tuple[int, int]
                 Minimum view size of (width, height) in pixels. Default = (800, 600)
         camera_kwargs : dict
@@ -142,7 +142,11 @@ class QSofaGLView(QOpenGLWidget):
                 The MechanicalObject will also be available within the QSofaGLView as a parameter "dofs"
 
         """
-
+        if initial_position is None:
+            auto_place = True
+            initial_position = [0, 0, 0, 0, 0, 0, 1]
+        else:
+            auto_place = False
         importPlugin("SofaGeneralEngine")
         subnode = node.addChild("camera_4_QSofaGLView")
         dofs = subnode.addObject("MechanicalObject", name="camera_dofs", template="Rigid3d", position=initial_position)
@@ -152,7 +156,8 @@ class QSofaGLView(QOpenGLWidget):
 
         if sofa_visuals_node is None:
             sofa_visuals_node = node
-        view = QSofaGLView(sofa_visuals_node=sofa_visuals_node, camera=camera, size=size)
+
+        view = QSofaGLView(sofa_visuals_node=sofa_visuals_node, camera=camera, size=size, auto_place_camera=auto_place)
         view.dofs = dofs
         view.camera_position = dofs.position
         return view, camera, dofs
@@ -194,6 +199,25 @@ class QSofaGLView(QOpenGLWidget):
             self.dofs.position = list(current_pos)
         else:
             self.camera.orientation = list(new_orientation)
+
+    def auto_place_camera(self):
+        """
+        Place the camera automatically such that it is outside the bounding box of the visuals node and looking at the
+        center.
+        Returns
+        -------
+        None
+        """
+        if self.dofs is None:
+            self.camera.setDefaultView()
+        else:
+            cam = self.visuals_node.addObject("InteractiveCamera", name="tempcam")
+            self.visuals_node.removeObject(self.camera)
+            Sofa.Simulation.init(self.visuals_node)
+            cam.setDefaultView()
+            self.update_position(cam.position.array())
+            self.update_orientation(cam.orientation.array())
+            self.visuals_node.removeObject(cam)
 
     def make_viewer_transparent(self, make_transparent=True):
         """ This will only make the background of the viewer transparent if the background_color alpha is set to 0"""
@@ -239,16 +263,6 @@ class QSofaGLView(QOpenGLWidget):
         if self.auto_place:
             self.visuals_node.init()
             self.auto_place_camera()
-
-    def auto_place_camera(self):
-        """
-        Place the camera automatically such that it is outside the bounding box of the visuals node and looking at the
-        center.
-        Returns
-        -------
-        None
-        """
-        self.camera.setDefaultView()
 
     def paintGL(self):
         self.makeCurrent()
