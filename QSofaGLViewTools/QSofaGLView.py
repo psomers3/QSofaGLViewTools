@@ -234,17 +234,20 @@ class QSofaGLView(QOpenGLWidget):
             self.update_position(cam.position.array())
             self.update_orientation(cam.orientation.array())
             self.visuals_node.removeObject(cam)
+        self.update()
 
     def make_viewer_transparent(self, make_transparent=True):
         """ This will only make the background of the viewer transparent if the background_color alpha is set to 0"""
         self.setAttribute(Qt.WA_TranslucentBackground, make_transparent)
         self.setAttribute(Qt.WA_AlwaysStackOnTop, make_transparent)
+        self.update()
 
     def set_background_color(self, color):
         """
         :param color: [r, g, b, alpha] alpha determines opacity. Use 0 to save images with a transparent background
         """
         self.background_color = color
+        self.update()
 
     def get_intrinsic_parameters(self):
         # https://github.com/opencv/opencv_contrib/blob/master/modules/viz/src/types.cpp
@@ -465,6 +468,7 @@ class QSofaGLView(QOpenGLWidget):
             delta *= -rate
 
         self.update_position(current_pos[:3] + delta)
+        self.update()
 
         self.scroll_event.emit(a0)
         super(QSofaGLView, self).wheelEvent(a0)

@@ -99,6 +99,7 @@ class MainWindow(QMainWindow):
         self.sofa_view = QSofaGLView(sofa_visuals_node=self.sofa_sim.root,
                                      camera=self.sofa_sim.root.camera,
                                      auto_place_camera=True)
+
         self.sofa_view.set_background_color([0, 0, 1, 1])  # [1,1,1,1] for white
 
         # set the view to be the main widget of the window. In the future, this should be done in a layout
