@@ -472,7 +472,8 @@ class QSofaGLView(QOpenGLWidget):
     def mousePressEvent(self, event: QMouseEvent, *args, **kwargs):
         if event.button() == Qt.MiddleButton:
             if self.dofs is not None:
-                self._temp_cam = self.visuals_node.addObject("InteractiveCamera", name="tempcam")
+                if self._temp_cam is None:
+                    self._temp_cam = self.visuals_node.addObject("InteractiveCamera", name="tempcam", distance=10)
                 current_pos = self.camera_position.array()
                 current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
                 self._temp_cam.position = current_pos[:3]
