@@ -2,6 +2,7 @@ from qtpy.QtWidgets import *
 from qtpy.QtCore import *
 from qtpy.QtGui import *
 import Sofa.SofaGL as SGL
+from SofaTypes.SofaTypes import Vec3double
 import Sofa
 from SofaRuntime import importPlugin
 from OpenGL.GL import *
@@ -17,6 +18,15 @@ import shutil
 
 
 sim = Sofa.Simulation
+
+
+def euler_to_quaternion(roll, pitch, yaw):
+    qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
+    qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2)
+    qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2)
+    qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(pitch / 2) * np.sin(yaw / 2)
+
+    return [qx, qy, qz, qw]
 
 
 def quaternion_rotation_matrix(Q):
@@ -105,6 +115,12 @@ class QSofaGLView(QOpenGLWidget):
         self.background_color = [1, 1, 1, 0]
         self.spheres = []
         self.setWindowFlag(Qt.NoDropShadowWindowHint)
+        self._rotating = False
+        self._panning = False
+        self._rotate_point = None
+        self._temp_cam = None
+        self._rotate_screen_origin = None
+        self._pan_screen_origin = None
         self._recording = False
         self._video_file = None  # type: str
         self._save_img = False
@@ -115,7 +131,7 @@ class QSofaGLView(QOpenGLWidget):
                                sofa_visuals_node: Sofa.Core.Node = None,
                                initial_position: list = None,
                                size: tuple = (800, 600),
-                               camera_kwargs: dict = {'distance': 5000, "fieldOfView": 45, "computeZClip": True}
+                               camera_kwargs: dict = {'distance': 5000, "fieldOfView": 45, "computeZClip": False}
                                ):
         """
         Function to create a QSofaGLViewer object and place a camera in it. This will also create a MechanicalObject to
@@ -371,17 +387,6 @@ class QSofaGLView(QOpenGLWidget):
             screen_positions[i] = gluProject(points[i][0], points[i][1], points[i][2])
         return screen_positions
 
-    def get_screen_locations(self, points: List[List[float]]):
-        """
-        :param points: list of 3D world coordinate points
-        :return: (x, y, z) positions in the screen coordinates
-        """
-        points = np.asarray(points)
-        screen_positions = np.zeros((len(points), 3))
-        for i in range(len(points)):
-            screen_positions[i] = gluProject(points[i][0], points[i][1], points[i][2])
-        return screen_positions
-
     def start_recording(self, video_file: str = 'test_vid.avi', save_separate_images=False):
         """
         Start recording screenshots to create a video.
@@ -446,8 +451,96 @@ class QSofaGLView(QOpenGLWidget):
         super(QSofaGLView, self).keyReleaseEvent(a0)
 
     def wheelEvent(self, a0: QWheelEvent) -> None:
+        x, y = a0.x(), a0.y()
+        screen_pt = self.camera.screenToWorldPoint([x, y, 0])
+        current_pos = self.camera_position.array()
+        current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
+        delta = np.array([screen_pt[0], screen_pt[1], screen_pt[2]]) - current_pos[:3]
+        center = self.visuals_node.bbox.array()
+        rate = np.linalg.norm(current_pos[:3] - center)
+
+        if a0.angleDelta().y() > 0:
+            delta *= rate
+        elif a0.angleDelta().y() <=0:
+            delta *= -rate
+
+        self.update_position(current_pos[:3] + delta)
+
         self.scroll_event.emit(a0)
         super(QSofaGLView, self).wheelEvent(a0)
+
+    def mousePressEvent(self, event: QMouseEvent, *args, **kwargs):
+        if event.button() == Qt.MiddleButton:
+            if self.dofs is not None:
+                self._temp_cam = self.visuals_node.addObject("InteractiveCamera", name="tempcam")
+                current_pos = self.camera_position.array()
+                current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
+                self._temp_cam.position = current_pos[:3]
+                self._temp_cam.orientation = self.camera_orientation.array()
+                self._temp_cam.init()
+
+            self._rotating = True
+            x, y = event.x(), event.y()
+            self._rotate_screen_origin = [x, y]
+            self.makeCurrent()
+            width, height = self.width(), self.height()
+            buff = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
+            image = np.frombuffer(buff, dtype=np.float32)
+            image = image.reshape(height, width)
+            image = np.flipud(image)
+            # get the fragment depth
+            depth = image[y][x]
+            # get projection matrix, view matrix and the viewport rectangle
+            model_view = np.array(glGetDoublev(GL_MODELVIEW_MATRIX))
+            proj = np.array(glGetDoublev(GL_PROJECTION_MATRIX))
+            view = np.array(glGetIntegerv(GL_VIEWPORT))
+
+            # unproject the point
+            self._rotate_point = list(gluUnProject(y, x, depth, model_view, proj, view))
+
+        elif event.button() == Qt.RightButton:
+            self._panning = True
+            x, y = event.x(), event.y()
+            self._pan_screen_origin = [x, y]
+
+    def mouseMoveEvent(self, event: QMouseEvent, *args, **kwargs):
+        if self._rotating:
+            x, y = event.x(), event.y()
+            delta_x, delta_y = self._rotate_screen_origin[0] - x,  self._rotate_screen_origin[1] - y
+            w, h = self.width(), self.height()
+            x_percent, y_percent = 2*delta_x/w, 2*delta_y/h  # 2 is to make it go faster
+            q = euler_to_quaternion(y_percent, x_percent, 0)
+            self._rotate_screen_origin = [x, y]
+            if self.dofs is not None:
+                current_pos = self.camera_position.array()
+                current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
+                self._temp_cam.position = current_pos[:3]
+                self._temp_cam.orientation = self.camera_orientation.array()
+                self._temp_cam.rotateWorldAroundPoint(q, self._rotate_point, list(self._temp_cam.orientation.toList()))
+                self.update_position(self._temp_cam.position.array())
+                self.update_orientation(self._temp_cam.orientation.array())
+            else:
+                self.camera.rotateWorldAroundPoint(q, self._rotate_point, self.camera_orientation.toList()[0])
+            self.update()
+        if self._panning:
+            last = self.camera.screenToWorldPoint([self._pan_screen_origin[0], self._pan_screen_origin[1], 0])
+            x, y = event.x(), event.y()
+            new = self.camera.screenToWorldPoint([x, y, 0])
+            dist = new - last
+            dist *= -1000
+            current_pos = self.camera_position.array()
+            current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
+            self.update_position(current_pos[:3] + np.array([dist[0], dist[1], dist[2]]))
+            self._pan_screen_origin = [x, y]
+            self.update()
+
+    def mouseReleaseEvent(self, event: QMouseEvent, *args, **kwargs):
+        if event.button() == Qt.MiddleButton:
+            self._rotating = False
+            # self.visuals_node.removeObject(self._temp_cam)
+
+        if event.button() == Qt.RightButton:
+            self._panning = False
 
     def draw_spheres(self, positions, radii, colors, clear_existing=True):
         """

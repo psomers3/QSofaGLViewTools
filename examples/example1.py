@@ -60,7 +60,7 @@ class SofaSim(QObject):
         # place light and a camera
         self.root.addObject("LightManager")
         self.root.addObject("DirectionalLight", direction=[0, 1, 0])
-        self.root.addObject("InteractiveCamera", name="camera", fieldOfView=45)
+        self.root.addObject("InteractiveCamera", name="camera", fieldOfView=45, computeZClip=False)
 
         self.simulation_timer = QTimer()
         self.simulation_timer.timeout.connect(self.step_sim)
@@ -106,11 +106,11 @@ class MainWindow(QMainWindow):
 
         self.sofa_sim.animation_end.connect(self.sofa_view.update)  # set a qt signal to update the view after sim step
 
-        self.view_control = QSofaViewKeyboardController()
-        self.view_control.set_viewers(self.sofa_view)
-
-        # draw the scene at a constant update rate. This is done so the scene is drawn even if nothing is being animated
-        self.view_control.start_auto_update()
+        # self.view_control = QSofaViewKeyboardController()
+        # self.view_control.set_viewers(self.sofa_view)
+        #
+        # # draw the scene at a constant update rate. This is done so the scene is drawn even if nothing is being animated
+        # self.view_control.start_auto_update()
 
     def keyPressEvent(self, QKeyEvent):
         if QKeyEvent.key() == Qt.Key_Space:
