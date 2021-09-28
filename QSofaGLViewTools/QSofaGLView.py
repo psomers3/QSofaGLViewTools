@@ -2,7 +2,6 @@ from qtpy.QtWidgets import *
 from qtpy.QtCore import *
 from qtpy.QtGui import *
 import Sofa.SofaGL as SGL
-from SofaTypes.SofaTypes import Vec3double
 import Sofa
 from SofaRuntime import importPlugin
 from OpenGL.GL import *
@@ -83,7 +82,8 @@ class QSofaGLView(QOpenGLWidget):
                  sofa_visuals_node: Sofa.Core.Node,
                  camera: Sofa.Components.BaseCamera,
                  size: tuple = (800, 600),
-                 auto_place_camera: bool = False):
+                 auto_place_camera: bool = False,
+                 internal_refresh_freq = 0):
         """
 
         Parameters
@@ -97,6 +97,9 @@ class QSofaGLView(QOpenGLWidget):
         auto_place_camera : bool
                 Whether or not to override the camera position and try to auto-place it for viewing the simulation. This
                 will occur everytime the GLView is initialized.
+        internal_refresh_freq : float
+                rate at which the window will automatically call it's own update function in Hz. recommended: 20 Hz if
+                not using another method to update the view.
         """
 
         super(QSofaGLView, self).__init__()
@@ -125,13 +128,19 @@ class QSofaGLView(QOpenGLWidget):
         self._video_file = None  # type: str
         self._save_img = False
         self._images = []
+        self._update_timer = QTimer()
+        self._update_timer.timeout.connect(self.update, Qt.QueuedConnection)
+        if internal_refresh_freq > 0:
+            ms = (1000/internal_refresh_freq)
+            self._update_timer.start(internal_refresh_freq)
 
     @staticmethod
     def create_view_and_camera(node: Sofa.Core.Node,
                                sofa_visuals_node: Sofa.Core.Node = None,
                                initial_position: list = None,
                                size: tuple = (800, 600),
-                               camera_kwargs: dict = {'distance': 5000, "fieldOfView": 45, "computeZClip": False}
+                               camera_kwargs: dict = {'distance': 5000, "fieldOfView": 45, "computeZClip": False},
+                               internal_refresh_freq = 0
                                ):
         """
         Function to create a QSofaGLViewer object and place a camera in it. This will also create a MechanicalObject to
@@ -150,6 +159,9 @@ class QSofaGLView(QOpenGLWidget):
         camera_kwargs : dict
                 dictionary of keywords to pass to construction of the Sofa.Components.InteractiveCamera object. Do not
                 pass "name", "position", or "orientation".
+        internal_refresh_freq : float
+                rate at which the window will automatically call it's own update function in Hz. recommended: 20 Hz if
+                not using another method to update the view.
 
         Returns
         -------
@@ -173,7 +185,11 @@ class QSofaGLView(QOpenGLWidget):
         if sofa_visuals_node is None:
             sofa_visuals_node = node
 
-        view = QSofaGLView(sofa_visuals_node=sofa_visuals_node, camera=camera, size=size, auto_place_camera=auto_place)
+        view = QSofaGLView(sofa_visuals_node=sofa_visuals_node,
+                           camera=camera,
+                           size=size,
+                           auto_place_camera=auto_place,
+                           internal_refresh_freq=internal_refresh_freq)
         view.dofs = dofs
         view.camera_position = dofs.position
         return view, camera, dofs

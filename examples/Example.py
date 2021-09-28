@@ -98,24 +98,18 @@ class MainWindow(QMainWindow):
         # create an opengl view to display a node from sofa and control a camera
         self.sofa_view = QSofaGLView(sofa_visuals_node=self.sofa_sim.root,
                                      camera=self.sofa_sim.root.camera,
-                                     auto_place_camera=True)
+                                     auto_place_camera=True,
+                                     internal_refresh_freq=20)
 
-        self.sofa_view.set_background_color([0, 0, 1, 1])  # [1,1,1,1] for white
+        self.sofa_view.set_background_color([0, 0, 0, 0])  # [1,1,1,1] for white
 
         # set the view to be the main widget of the window. In the future, this should be done in a layout
         self.setCentralWidget(self.sofa_view)
 
         self.sofa_sim.animation_end.connect(self.sofa_view.update)  # set a qt signal to update the view after sim step
 
-        # self.view_control = QSofaViewKeyboardController()
-        # self.view_control.set_viewers(self.sofa_view)
-        #
-        # # draw the scene at a constant update rate. This is done so the scene is drawn even if nothing is being animated
-        # self.view_control.start_auto_update()
-
     def keyPressEvent(self, QKeyEvent):
         if QKeyEvent.key() == Qt.Key_Space:
-            self.sofa_view.auto_place_camera()
             if self.sofa_sim.is_animating:
                 self.sofa_sim.stop_sim()
             else:
@@ -142,6 +136,5 @@ if __name__ == '__main__':
     window.showFullScreen()
     window.show()
     window.setAttribute(Qt.WA_TranslucentBackground)  # Need to set underlying widgets transparent as well
-    window.sofa_view.set_background_color([0, 0, 0, 0])
     window.sofa_view.make_viewer_transparent(True)
     sys.exit(app.exec())
