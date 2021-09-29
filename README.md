@@ -34,7 +34,7 @@ viewer, camera, camera_dofs = QSofaGLView.create_view_and_camera(rootNode,
 Use the scroll wheel (middle button) and right mouse buttons to control the view or with the arrow keys (rotations) and awsd keys (translations). To get the 3rd axes for both rotation and translation when using the keyboard, hold the ctrl key.
 
 ### Xbox Control
-Use an xbox controller to control a view. Same use as keyboard controller.
+Use an xbox controller to control a view. Same use as keyboard controller. Not thoroughly tested...
 
 ```python
 view_ctrl = QSofaViewXBoxController()
