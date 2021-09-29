@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
         self.sofa_view = QSofaGLView(sofa_visuals_node=self.sofa_sim.root,
                                      camera=self.sofa_sim.root.camera,
                                      auto_place_camera=True,
-                                     internal_refresh_freq=20)
+                                     internal_refresh_freq=0)
 
         self.sofa_view.set_background_color([0, 0, 0, 0])  # [1,1,1,1] for white
 

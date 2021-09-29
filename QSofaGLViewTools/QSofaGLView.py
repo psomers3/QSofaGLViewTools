@@ -4,6 +4,7 @@ from qtpy.QtGui import *
 import Sofa.SofaGL as SGL
 import Sofa
 from SofaRuntime import importPlugin
+from QSofaGLViewTools.QSofaViewKeyboardController import QSofaViewKeyboardController
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
@@ -65,6 +66,9 @@ def quaternion_rotation_matrix(Q):
                            [r21, -r11, r01],
                            [-r20, r10, -r00]])
     return rot_matrix
+
+
+
 
 
 class QSofaGLView(QOpenGLWidget):
@@ -133,6 +137,16 @@ class QSofaGLView(QOpenGLWidget):
         if internal_refresh_freq > 0:
             ms = (1000/internal_refresh_freq)
             self._update_timer.start(internal_refresh_freq)
+        self._keyboard_control = QSofaViewKeyboardController()
+        self._keyboard_control.set_viewers(self)
+        self._KEYBOARD_DIRECTIONS = {Qt.Key_Up: False,
+                                     Qt.Key_Down: False,
+                                     Qt.Key_Left: False,
+                                     Qt.Key_Right: False,
+                                     Qt.Key_W: False,
+                                     Qt.Key_S: False,
+                                     Qt.Key_A: False,
+                                     Qt.Key_D: False}
 
     @staticmethod
     def create_view_and_camera(node: Sofa.Core.Node,
@@ -191,6 +205,9 @@ class QSofaGLView(QOpenGLWidget):
                            auto_place_camera=auto_place,
                            internal_refresh_freq=internal_refresh_freq)
         view.dofs = dofs
+        _temp_cam = sofa_visuals_node.addObject("InteractiveCamera", name="tempcam", distance=10)
+        _temp_cam.init()
+        view._temp_cam = _temp_cam
         view.camera_position = dofs.position
         return view, camera, dofs
 
@@ -298,6 +315,8 @@ class QSofaGLView(QOpenGLWidget):
         if self.auto_place:
             self.visuals_node.init()
             self.auto_place_camera()
+        bbox = self.visuals_node.bbox.array()
+        self._keyboard_control.translate_rate_limit = np.linalg.norm(bbox[0]-bbox[1]) * 0.15
 
     def paintGL(self):
         self.makeCurrent()
@@ -462,10 +481,24 @@ class QSofaGLView(QOpenGLWidget):
             self._images.append((time.time(), self.get_screen_shot(dtype=np.uint16)))
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
+        key = a0.key()
+        if key in self._KEYBOARD_DIRECTIONS.keys():
+            self._KEYBOARD_DIRECTIONS[key] = True
+            self._keyboard_control.start_auto_update()
+            self._keyboard_control.keyPressEvent(a0)
+
         self.key_pressed.emit(a0)
         super(QSofaGLView, self).keyPressEvent(a0)
 
     def keyReleaseEvent(self, a0: QKeyEvent) -> None:
+        key = a0.key()
+        if key in self._KEYBOARD_DIRECTIONS.keys():
+            self._KEYBOARD_DIRECTIONS[key] = False
+            self._keyboard_control.keyReleaseEvent(a0)
+            check = [self._KEYBOARD_DIRECTIONS[x] for x in self._KEYBOARD_DIRECTIONS.keys()]
+            if not True in check:
+                self._keyboard_control.stop_auto_update()
+
         self.key_released.emit(a0)
         super(QSofaGLView, self).keyReleaseEvent(a0)
 
@@ -492,13 +525,10 @@ class QSofaGLView(QOpenGLWidget):
     def mousePressEvent(self, event: QMouseEvent, *args, **kwargs):
         if event.button() == Qt.MiddleButton:
             if self.dofs is not None:
-                if self._temp_cam is None:
-                    self._temp_cam = self.visuals_node.addObject("InteractiveCamera", name="tempcam", distance=10)
                 current_pos = self.camera_position.array()
                 current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
                 self._temp_cam.position = current_pos[:3]
                 self._temp_cam.orientation = self.camera_orientation.array()
-                self._temp_cam.init()
 
             self._rotating = True
             x, y = event.x(), event.y()

@@ -14,7 +14,7 @@ def create_scene(root):
     importPlugin("SofaMiscForceField")
     importPlugin("SofaBaseLinearSolver")
     importPlugin("SofaBaseMechanics")
-
+    root.dt = 0.01
     root.gravity = [0, -1., 0]
     root.addObject("VisualStyle", displayFlags="showBehaviorModels showAll")
     root.addObject("MeshGmshLoader", name="meshLoaderCoarse", filename="../test/liver.msh")
@@ -53,10 +53,11 @@ def main(node: Sofa.Core.Node, viewer: QSofaGLView):
     start = time.time()
     last = start
     while time.time() - start < 10:
-        Sofa.Simulation.animate(node, time.time() - last)
+        while time.time() - last < node.getDt():
+            time.sleep(0.0001)
+        Sofa.Simulation.animate(node, node.getDt())
         Sofa.Simulation.updateVisual(node)  # idk why this isn't working right now.
         last = time.time()
-        time.sleep(0.01)
     input("\nPress enter to quit:")
     viewer.close()
 

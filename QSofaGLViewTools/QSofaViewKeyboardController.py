@@ -42,6 +42,7 @@ class QSofaViewKeyboardController(QObject):
         except TypeError:
             pass
         for viewer in self.viewers:
+            viewer._keyboard_control = self
             self._update_timer.timeout.connect(viewer.update)
             viewer.key_pressed.connect(self.keyPressEvent)
             viewer.key_released.connect(self.keyReleaseEvent)
