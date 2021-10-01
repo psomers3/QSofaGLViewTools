@@ -5,6 +5,18 @@ import time
 
 
 def create_scene(root):
+    """
+    Function to fill a SOFA scene given a root node.
+    Parameters
+    ----------
+    root : Sofa.Core.Node
+            A SOFA node to fill with a scene.
+
+    Returns
+    -------
+    None
+    """
+
     importPlugin('SofaOpenglVisual')
     importPlugin("SofaGeneralLoader")
     importPlugin("SofaImplicitOdeSolver")
@@ -48,7 +60,7 @@ def main(node: Sofa.Core.Node, viewer: QSofaGLView):
     node : Sofa.Core.Node
     viewer : QSofaGLView
     """
-    viewer.set_background_color([0,0,0,1])
+    viewer.set_background_color([0, 0, 0, 1])
     input("\nPress enter to simulate 10 seconds:")
     start = time.time()
     last = start
@@ -59,6 +71,7 @@ def main(node: Sofa.Core.Node, viewer: QSofaGLView):
         Sofa.Simulation.updateVisual(node)  # idk why this isn't working right now.
         last = time.time()
     input("\nPress enter to quit:")
+    viewer.hide()
     viewer.close()
 
 

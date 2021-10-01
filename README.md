@@ -33,6 +33,41 @@ viewer, camera, camera_dofs = QSofaGLView.create_view_and_camera(rootNode,
 ```
 Use the scroll wheel (middle button) and right mouse buttons to control the view or with the arrow keys (rotations) and awsd keys (translations). To get the 3rd axes for both rotation and translation when using the keyboard, hold the ctrl key.
 
+## Simple Window
+There is a third usage option that is available for quick and dirty visualization of SOFA python scripts. The provided `create_simple_window` function can be used to launch a QSofaGLView (using `create_view_and_camera` in the background) parallel to the python script that is to be run. For this to work, the main python script needs to be encapsulated in a function. This is because the PYQT backend needs to run in the main thread and, therefore, the desired code needs to run from a different thread. 
+
+Example usage as seen in the `examples/simple_window.py` example:
+
+```python 
+def main(node: Sofa.Core.Node, viewer: QSofaGLView):
+    """
+    Main function that will run as the typical python script
+    Parameters
+    ----------
+    node : Sofa.Core.Node
+    viewer : QSofaGLView
+    """
+    viewer.set_background_color([0, 0, 0, 1])
+    input("\nPress enter to simulate 10 seconds:")
+    start = time.time()
+    last = start
+    while time.time() - start < 10:
+        while time.time() - last < node.getDt():
+            time.sleep(0.0001)
+        Sofa.Simulation.animate(node, node.getDt())
+        Sofa.Simulation.updateVisual(node)  # TODO: Texture does not update with simple_window...
+        last = time.time()
+    input("\nPress enter to quit:")
+    viewer.hide()
+    viewer.close()
+
+
+if __name__ == '__main__':
+    root_node = Sofa.Core.Node("Root")  # create root node
+    create_scene(root_node)  # fill the scene (assuming no camera is manually added)
+    create_simple_window(main, root_node)  # create a window and call the main function
+```
+
 ### Xbox Control
 Use an xbox controller to control a view. Same use as keyboard controller. Not thoroughly tested...
 
