@@ -134,6 +134,7 @@ class QSofaGLView(QOpenGLWidget):
         self._images = []
         self._update_timer = QTimer()
         self._update_timer.timeout.connect(self.update, Qt.QueuedConnection)
+        self.zoom_bb = None
         if internal_refresh_freq > 0:
             ms = (1000/internal_refresh_freq)
             self._update_timer.start(internal_refresh_freq)
@@ -209,6 +210,7 @@ class QSofaGLView(QOpenGLWidget):
         _temp_cam.init()
         view._temp_cam = _temp_cam
         view.camera_position = dofs.position
+
         return view, camera, dofs
 
     def update_position(self, new_position):
@@ -313,10 +315,17 @@ class QSofaGLView(QOpenGLWidget):
         Sofa.Simulation.initVisual(self.visuals_node)
         Sofa.Simulation.initTextures(self.visuals_node)
         if self.auto_place:
-            self.visuals_node.init()
             self.auto_place_camera()
         bbox = self.visuals_node.bbox.array()
-        self._keyboard_control.translate_rate_limit = np.linalg.norm(bbox[0]-bbox[1]) * 0.15
+        test = [x<1e-50 for x in bbox[0]]  # cheap check if bounding box is bad
+        if True in test:
+            self._keyboard_control.translate_rate_limit = np.linalg.norm(bbox[0]-bbox[1]) * 0.15
+            self.zoom_bb = self.visuals_node.bbox
+
+        else:
+            bbox = self.visuals_node.getRoot().bbox.array()
+            self._keyboard_control.translate_rate_limit = np.linalg.norm(bbox[0]-bbox[1]) * 0.15
+            self.zoom_bb = self.visuals_node.getRoot().bbox
 
     def paintGL(self):
         self.makeCurrent()
@@ -508,7 +517,7 @@ class QSofaGLView(QOpenGLWidget):
         current_pos = self.camera_position.array()
         current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
         delta = np.array([screen_pt[0], screen_pt[1], screen_pt[2]]) - current_pos[:3]
-        center = self.visuals_node.bbox.array()
+        center = self.zoom_bb.array()
         rate = np.linalg.norm(current_pos[:3] - center)
 
         if a0.angleDelta().y() > 0:
