@@ -314,6 +314,7 @@ class QSofaGLView(QOpenGLWidget):
         SGL.glewInit()
         Sofa.Simulation.initVisual(self.visuals_node)
         Sofa.Simulation.initTextures(self.visuals_node)
+        self.visuals_node.getRoot().init()
         if self.auto_place:
             self.auto_place_camera()
         bbox = self.visuals_node.bbox.array()
@@ -324,7 +325,8 @@ class QSofaGLView(QOpenGLWidget):
 
         else:
             bbox = self.visuals_node.getRoot().bbox.array()
-            self._keyboard_control.translate_rate_limit = np.linalg.norm(bbox[0]-bbox[1]) * 0.15
+            # self._keyboard_control.translate_rate_limit = np.linalg.norm(bbox[0]-bbox[1]) * 0.15
+            self._keyboard_control.translate_rate_limit = 1.5
             self.zoom_bb = self.visuals_node.getRoot().bbox
 
     def paintGL(self):
@@ -517,8 +519,9 @@ class QSofaGLView(QOpenGLWidget):
         current_pos = self.camera_position.array()
         current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
         delta = np.array([screen_pt[0], screen_pt[1], screen_pt[2]]) - current_pos[:3]
+        delta = delta / np.linalg.norm(delta)
         center = self.zoom_bb.array()
-        rate = np.linalg.norm(current_pos[:3] - center)
+        rate = np.linalg.norm(current_pos[:3] - center)*.1
 
         if a0.angleDelta().y() > 0:
             delta *= rate
@@ -587,7 +590,9 @@ class QSofaGLView(QOpenGLWidget):
             x, y = event.x(), event.y()
             new = self.camera.screenToWorldPoint([x, y, 0])
             dist = new - last
-            dist *= -1000
+            bbox = self.zoom_bb.array()
+            extent = bbox[0] -bbox[1]
+            dist = (np.asarray([dist[0], dist[1], dist[2]]) / extent)*100
             current_pos = self.camera_position.array()
             current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
             self.update_position(current_pos[:3] + np.array([dist[0], dist[1], dist[2]]))
