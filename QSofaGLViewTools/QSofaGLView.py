@@ -311,6 +311,14 @@ class QSofaGLView(QOpenGLWidget):
         glEnable(GL_LIGHTING)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
+
+        glLightfv(GL_LIGHT0, GL_AMBIENT, [0,0,0,0]);
+        glLightfv(GL_LIGHT0, GL_DIFFUSE,  [0,0,0,0]);
+        glLightfv(GL_LIGHT0, GL_SPECULAR,  [0,0,0,0]);
+        glLightfv(GL_LIGHT0, GL_POSITION,  [0,0,0,0]);
+        glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 180);
+        glEnable(GL_LIGHT0);
+
         SGL.glewInit()
         Sofa.Simulation.initVisual(self.visuals_node)
         Sofa.Simulation.initTextures(self.visuals_node)
@@ -331,6 +339,16 @@ class QSofaGLView(QOpenGLWidget):
 
     def paintGL(self):
         self.makeCurrent()
+
+        glLightfv(GL_LIGHT0, GL_AMBIENT, [0, 0, 0, 0])
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, [0, 0, 0, 0])
+        glLightfv(GL_LIGHT0, GL_SPECULAR, [0, 0, 0, 0])
+        glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 0, 0])
+        glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 180)
+        glEnable(GL_LIGHT0)
+
+
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glClearColor(*self.background_color)
         glMatrixMode(GL_PROJECTION)
@@ -400,13 +418,13 @@ class QSofaGLView(QOpenGLWidget):
             image = np.frombuffer(buff, dtype=dtype)
             return np.flipud(image.reshape(height, width, 3))
 
-    def save_image(self, filename, dtype: np.dtype = np.uint16):
+    def save_image(self, filename, dtype: np.dtype = np.uint8):
         """
         Save image to file
         :param filename: name of file to save image to. extension determines file type (i.e. "pic.png")
         """
         image = self.get_screen_shot(return_with_alpha=True, dtype=dtype)
-        Image.fromarray(image).save(filename)
+        Image.fromarray(image, mode="RGBA").save(filename)
 
     def save_depth_image(self, filename, scaled=True, dtype: np.dtype = np.uint16):
         """
@@ -417,13 +435,13 @@ class QSofaGLView(QOpenGLWidget):
         image = self.get_depth_image(scaled_for_viewing=scaled, return_type=dtype)
         Image.fromarray(image).save(filename)
 
-    def save_depths(self, filename, dtype: np.dtype = np.uint16):
+    def save_depths(self, filename):
         """
         Save pixel depth values to file
         :param filename: name of file to save depths to. extension determines file type (i.e. "pic.jpg")
         """
-        depths = self.get_depth_map(dtype=dtype)
-        Image.fromarray(depths).save(filename)
+        depths = self.get_depth_map()
+        Image.fromarray(depths, mode="F").save(filename)
 
     def get_screen_locations(self, points: List[List[float]]):
         """
