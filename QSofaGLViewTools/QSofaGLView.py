@@ -595,7 +595,7 @@ class QSofaGLView(QOpenGLWidget):
 
         elif event.button() == Qt.MouseButton.RightButton:
             self._panning = True
-            x, y = event.screenPos().x(), event.screenPos().y()
+            x, y = event.pos().x(), event.pos().y()
             self._pan_screen_origin = [x, y]
 
     def mouseMoveEvent(self, event: QMouseEvent, *args, **kwargs):
