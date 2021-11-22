@@ -1,5 +1,13 @@
-from qtpy.QtCore import *
-from qtpy.QtGui import QKeyEvent
+try:
+    from qtpy.QtWidgets import *
+    from qtpy.QtCore import *
+    from qtpy.QtGui import *
+except Exception as e:
+    from PyQt6.QtWidgets import *
+    from PyQt6.QtCore import *
+    from PyQt6.QtGui import *
+    Signal = pyqtSignal
+
 import numpy as np
 import scipy.spatial.transform as transform
 import time
@@ -61,37 +69,37 @@ class QSofaViewKeyboardController(QObject):
         key = event.key()
         mod = event.modifiers()
 
-        if key == Qt.Key_Up:
+        if key == Qt.Key.Key_Up:
             self.current_rotational_speed[0] = -self.rotate_rate_limit
-        elif key == Qt.Key_Down:
+        elif key == Qt.Key.Key_Down:
             self.current_rotational_speed[0] = self.rotate_rate_limit
-        elif key == Qt.Key_Left:
-            if mod == Qt.ControlModifier:
+        elif key == Qt.Key.Key_Left:
+            if mod == Qt.KeyboardModifier.ControlModifier:
                 self.current_rotational_speed[2] = -self.rotate_rate_limit
             else:
                 self.current_rotational_speed[1] = -self.rotate_rate_limit
-        elif key == Qt.Key_Right:
-            if mod == Qt.ControlModifier:
+        elif key == Qt.Key.Key_Right:
+            if mod == Qt.KeyboardModifier.ControlModifier:
                 self.current_rotational_speed[2] = self.rotate_rate_limit
             else:
                 self.current_rotational_speed[1] = self.rotate_rate_limit
 
-        elif key == Qt.Key_W:
-            if mod == Qt.ControlModifier:
+        elif key == Qt.Key.Key_W:
+            if mod == Qt.KeyboardModifier.ControlModifier:
                 self.current_translational_speed[2] = self.translate_rate_limit
             else:
                 self.current_translational_speed[1] = -self.translate_rate_limit
-        elif key == Qt.Key_S:
-            if mod == Qt.ControlModifier:
+        elif key == Qt.Key.Key_S:
+            if mod == Qt.KeyboardModifier.ControlModifier:
                 self.current_translational_speed[2] = -self.translate_rate_limit
             else:
                 self.current_translational_speed[1] = self.translate_rate_limit
-        elif key == Qt.Key_A:
+        elif key == Qt.Key.Key_A:
             self.current_translational_speed[0] = self.translate_rate_limit
-        elif key == Qt.Key_D:
+        elif key == Qt.Key.Key_D:
             self.current_translational_speed[0] = -self.translate_rate_limit
 
-        elif key == Qt.Key_Control:
+        elif key == Qt.Key.Key_Control:
             self.current_rotational_speed[1] = 0
             self.current_translational_speed[1] = 0
 
@@ -99,37 +107,37 @@ class QSofaViewKeyboardController(QObject):
         key = event.key()
         mod = event.modifiers()
 
-        if key == Qt.Key_Up:
+        if key == Qt.Key.Key_Up:
             self.current_rotational_speed[0] = 0
-        elif key == Qt.Key_Down:
+        elif key == Qt.Key.Key_Down:
             self.current_rotational_speed[0] = 0
-        elif key == Qt.Key_Left:
-            if mod == Qt.ControlModifier:
+        elif key == Qt.Key.Key_Left:
+            if mod == Qt.KeyboardModifier.ControlModifier:
                 self.current_rotational_speed[2] = 0
             else:
                 self.current_rotational_speed[1] = 0
-        elif key == Qt.Key_Right:
-            if mod == Qt.ControlModifier:
+        elif key == Qt.Key.Key_Right:
+            if mod == Qt.KeyboardModifier.ControlModifier:
                 self.current_rotational_speed[2] = 0
             else:
                 self.current_rotational_speed[1] = 0
 
-        elif key == Qt.Key_W:
-            if mod == Qt.ControlModifier:
+        elif key == Qt.Key.Key_W:
+            if mod == Qt.KeyboardModifier.ControlModifier:
                 self.current_translational_speed[2] = 0
             else:
                 self.current_translational_speed[1] = 0
-        elif key == Qt.Key_S:
-            if mod == Qt.ControlModifier:
+        elif key == Qt.Key.Key_S:
+            if mod == Qt.KeyboardModifier.ControlModifier:
                 self.current_translational_speed[2] = 0
             else:
                 self.current_translational_speed[1] = 0
-        elif key == Qt.Key_A:
+        elif key == Qt.Key.Key_A:
             self.current_translational_speed[0] = 0
-        elif key == Qt.Key_D:
+        elif key == Qt.Key.Key_D:
             self.current_translational_speed[0] = 0
 
-        elif key == Qt.Key_Control:
+        elif key == Qt.Key.Key_Control:
             self.current_rotational_speed[2] = 0
             self.current_translational_speed[2] = 0
 

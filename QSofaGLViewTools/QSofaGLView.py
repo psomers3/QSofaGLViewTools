@@ -1,6 +1,15 @@
-from qtpy.QtWidgets import *
-from qtpy.QtCore import *
-from qtpy.QtGui import *
+try:
+    from qtpy.QtWidgets import *
+    from qtpy.QtCore import *
+    from qtpy.QtGui import *
+except Exception as e:
+    print(e)
+    from PyQt6.QtWidgets import *
+    from PyQt6.QtCore import *
+    from PyQt6.QtGui import *
+    from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+    Signal = pyqtSignal
+
 import Sofa.SofaGL as SGL
 import Sofa
 from SofaRuntime import importPlugin
@@ -68,9 +77,6 @@ def quaternion_rotation_matrix(Q):
     return rot_matrix
 
 
-
-
-
 class QSofaGLView(QOpenGLWidget):
     key_pressed = Signal(QKeyEvent)
     key_released = Signal(QKeyEvent)
@@ -87,7 +93,8 @@ class QSofaGLView(QOpenGLWidget):
                  camera: Sofa.Components.BaseCamera,
                  size: tuple = (800, 600),
                  auto_place_camera: bool = False,
-                 internal_refresh_freq = 0):
+                 internal_refresh_freq = 0,
+                 suppress_base_light: bool = False):
         """
 
         Parameters
@@ -104,11 +111,15 @@ class QSofaGLView(QOpenGLWidget):
         internal_refresh_freq : float
                 rate at which the window will automatically call it's own update function in Hz. recommended: 20 Hz if
                 not using another method to update the view.
+        suppress_base_light : bool
+                Whether or not the default SOFA light should be turned off. The scene will be black if no other light
+                is added to the scene.
         """
 
         super(QSofaGLView, self).__init__()
 
         self.auto_place = auto_place_camera
+        self.suppress_base_light = suppress_base_light
         self.visuals_node = sofa_visuals_node
         self.camera = camera
         self.camera_position = camera.position
@@ -118,10 +129,10 @@ class QSofaGLView(QOpenGLWidget):
         self.resize(*size)
         self.z_far = camera.zFar  # get these values using self.z***.value because they are sofa Data objects
         self.z_near = camera.zNear
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.background_color = [1, 1, 1, 0]
         self.spheres = []
-        self.setWindowFlag(Qt.NoDropShadowWindowHint)
+        # self.setWindowFlag(Qt.NoDropShadowWindowHint)
         self._rotating = False
         self._panning = False
         self._rotate_point = None
@@ -133,21 +144,21 @@ class QSofaGLView(QOpenGLWidget):
         self._save_img = False
         self._images = []
         self._update_timer = QTimer()
-        self._update_timer.timeout.connect(self.update, Qt.QueuedConnection)
+        self._update_timer.timeout.connect(self.update, Qt.ConnectionType.QueuedConnection)
         self.zoom_bb = None
         if internal_refresh_freq > 0:
             ms = (1000/internal_refresh_freq)
             self._update_timer.start(internal_refresh_freq)
         self._keyboard_control = QSofaViewKeyboardController()
         self._keyboard_control.set_viewers(self)
-        self._KEYBOARD_DIRECTIONS = {Qt.Key_Up: False,
-                                     Qt.Key_Down: False,
-                                     Qt.Key_Left: False,
-                                     Qt.Key_Right: False,
-                                     Qt.Key_W: False,
-                                     Qt.Key_S: False,
-                                     Qt.Key_A: False,
-                                     Qt.Key_D: False}
+        self._KEYBOARD_DIRECTIONS = {Qt.Key.Key_Up: False,
+                                     Qt.Key.Key_Down: False,
+                                     Qt.Key.Key_Left: False,
+                                     Qt.Key.Key_Right: False,
+                                     Qt.Key.Key_W: False,
+                                     Qt.Key.Key_S: False,
+                                     Qt.Key.Key_A: False,
+                                     Qt.Key.Key_D: False}
 
     @staticmethod
     def create_view_and_camera(node: Sofa.Core.Node,
@@ -155,7 +166,8 @@ class QSofaGLView(QOpenGLWidget):
                                initial_position: list = None,
                                size: tuple = (800, 600),
                                camera_kwargs: dict = {'distance': 5000, "fieldOfView": 45, "computeZClip": False},
-                               internal_refresh_freq = 0
+                               internal_refresh_freq = 0,
+                               suppress_base_light: bool = False
                                ):
         """
         Function to create a QSofaGLViewer object and place a camera in it. This will also create a MechanicalObject to
@@ -177,6 +189,9 @@ class QSofaGLView(QOpenGLWidget):
         internal_refresh_freq : float
                 rate at which the window will automatically call it's own update function in Hz. recommended: 20 Hz if
                 not using another method to update the view.
+        suppress_base_light : bool
+                Whether or not the default SOFA light should be turned off. The scene will be black if no other light
+                is added to the scene
 
         Returns
         -------
@@ -204,7 +219,8 @@ class QSofaGLView(QOpenGLWidget):
                            camera=camera,
                            size=size,
                            auto_place_camera=auto_place,
-                           internal_refresh_freq=internal_refresh_freq)
+                           internal_refresh_freq=internal_refresh_freq,
+                           suppress_base_light=suppress_base_light)
         view.dofs = dofs
         _temp_cam = sofa_visuals_node.addObject("InteractiveCamera", name="tempcam", distance=10)
         _temp_cam.init()
@@ -273,8 +289,8 @@ class QSofaGLView(QOpenGLWidget):
 
     def make_viewer_transparent(self, make_transparent=True):
         """ This will only make the background of the viewer transparent if the background_color alpha is set to 0"""
-        self.setAttribute(Qt.WA_TranslucentBackground, make_transparent)
-        self.setAttribute(Qt.WA_AlwaysStackOnTop, make_transparent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, make_transparent)
+        self.setAttribute(Qt.WidgetAttribute.WA_AlwaysStackOnTop, make_transparent)
         self.update()
 
     def set_background_color(self, color):
@@ -311,13 +327,13 @@ class QSofaGLView(QOpenGLWidget):
         glEnable(GL_LIGHTING)
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LESS)
-
-        glLightfv(GL_LIGHT0, GL_AMBIENT, [0,0,0,0]);
-        glLightfv(GL_LIGHT0, GL_DIFFUSE,  [0,0,0,0]);
-        glLightfv(GL_LIGHT0, GL_SPECULAR,  [0,0,0,0]);
-        glLightfv(GL_LIGHT0, GL_POSITION,  [0,0,0,0]);
-        glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 180);
-        glEnable(GL_LIGHT0);
+        if self.suppress_base_light:
+            glLightfv(GL_LIGHT0, GL_AMBIENT, [0, 0, 0, 0])
+            glLightfv(GL_LIGHT0, GL_DIFFUSE,  [0, 0, 0, 0])
+            glLightfv(GL_LIGHT0, GL_SPECULAR,  [0, 0, 0, 0])
+            glLightfv(GL_LIGHT0, GL_POSITION,  [0, 0, 0, 0])
+            glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 180)
+            glEnable(GL_LIGHT0)
 
         SGL.glewInit()
         Sofa.Simulation.initVisual(self.visuals_node)
@@ -326,7 +342,7 @@ class QSofaGLView(QOpenGLWidget):
         if self.auto_place:
             self.auto_place_camera()
         bbox = self.visuals_node.bbox.array()
-        test = [x<1e-50 for x in bbox[0]]  # cheap check if bounding box is bad
+        test = [x < 1e-50 for x in bbox[0]]  # cheap check if bounding box is bad
         if True in test:
             self._keyboard_control.translate_rate_limit = np.linalg.norm(bbox[0]-bbox[1]) * 0.15
             self.zoom_bb = self.visuals_node.bbox
@@ -339,15 +355,13 @@ class QSofaGLView(QOpenGLWidget):
 
     def paintGL(self):
         self.makeCurrent()
-
-        glLightfv(GL_LIGHT0, GL_AMBIENT, [0, 0, 0, 0])
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, [0, 0, 0, 0])
-        glLightfv(GL_LIGHT0, GL_SPECULAR, [0, 0, 0, 0])
-        glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 0, 0])
-        glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 180)
-        glEnable(GL_LIGHT0)
-
-
+        if self.suppress_base_light:
+            glLightfv(GL_LIGHT0, GL_AMBIENT, [0, 0, 0, 0])
+            glLightfv(GL_LIGHT0, GL_DIFFUSE,  [0, 0, 0, 0])
+            glLightfv(GL_LIGHT0, GL_SPECULAR,  [0, 0, 0, 0])
+            glLightfv(GL_LIGHT0, GL_POSITION,  [0, 0, 0, 0])
+            glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 180)
+            glEnable(GL_LIGHT0)
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glClearColor(*self.background_color)
@@ -532,7 +546,7 @@ class QSofaGLView(QOpenGLWidget):
         super(QSofaGLView, self).keyReleaseEvent(a0)
 
     def wheelEvent(self, a0: QWheelEvent) -> None:
-        x, y = a0.x(), a0.y()
+        x, y = a0.position().x(), a0.position().y()
         screen_pt = self.camera.screenToWorldPoint([x, y, 0])
         current_pos = self.camera_position.array()
         current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
@@ -553,7 +567,7 @@ class QSofaGLView(QOpenGLWidget):
         super(QSofaGLView, self).wheelEvent(a0)
 
     def mousePressEvent(self, event: QMouseEvent, *args, **kwargs):
-        if event.button() == Qt.MiddleButton:
+        if event.button() == Qt.MouseButton.MiddleButton:
             if self.dofs is not None:
                 current_pos = self.camera_position.array()
                 current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
@@ -561,7 +575,7 @@ class QSofaGLView(QOpenGLWidget):
                 self._temp_cam.orientation = self.camera_orientation.array()
 
             self._rotating = True
-            x, y = event.x(), event.y()
+            x, y = event.pos().x(), event.pos().y()
             self._rotate_screen_origin = [x, y]
             self.makeCurrent()
             width, height = self.width(), self.height()
@@ -570,7 +584,7 @@ class QSofaGLView(QOpenGLWidget):
             image = image.reshape(height, width)
             image = np.flipud(image)
             # get the fragment depth
-            depth = image[y][x]
+            depth = image[int(y)][int(x)]
             # get projection matrix, view matrix and the viewport rectangle
             model_view = np.array(glGetDoublev(GL_MODELVIEW_MATRIX))
             proj = np.array(glGetDoublev(GL_PROJECTION_MATRIX))
@@ -579,14 +593,14 @@ class QSofaGLView(QOpenGLWidget):
             # unproject the point
             self._rotate_point = list(gluUnProject(y, x, depth, model_view, proj, view))
 
-        elif event.button() == Qt.RightButton:
+        elif event.button() == Qt.MouseButton.RightButton:
             self._panning = True
-            x, y = event.x(), event.y()
+            x, y = event.screenPos().x(), event.screenPos().y()
             self._pan_screen_origin = [x, y]
 
     def mouseMoveEvent(self, event: QMouseEvent, *args, **kwargs):
         if self._rotating:
-            x, y = event.x(), event.y()
+            x, y = event.pos().x(), event.pos().y()
             delta_x, delta_y = self._rotate_screen_origin[0] - x,  self._rotate_screen_origin[1] - y
             w, h = self.width(), self.height()
             x_percent, y_percent = 2*delta_x/w, 2*delta_y/h  # 2 is to make it go faster
@@ -605,12 +619,12 @@ class QSofaGLView(QOpenGLWidget):
             self.update()
         if self._panning:
             last = self.camera.screenToWorldPoint([self._pan_screen_origin[0], self._pan_screen_origin[1], 0])
-            x, y = event.x(), event.y()
+            x, y = event.pos().x(), event.pos().y()
             new = self.camera.screenToWorldPoint([x, y, 0])
             dist = new - last
             bbox = self.zoom_bb.array()
             extent = bbox[0] -bbox[1]
-            dist = (np.asarray([dist[0], dist[1], dist[2]]) / extent)*100
+            dist = (np.asarray([dist[0], dist[1], dist[2]]) / extent)*300
             current_pos = self.camera_position.array()
             current_pos = np.reshape(current_pos, (current_pos.shape[-1]))
             self.update_position(current_pos[:3] + np.array([dist[0], dist[1], dist[2]]))
@@ -618,11 +632,11 @@ class QSofaGLView(QOpenGLWidget):
             self.update()
 
     def mouseReleaseEvent(self, event: QMouseEvent, *args, **kwargs):
-        if event.button() == Qt.MiddleButton:
+        if event.button() == Qt.MouseButton.MiddleButton:
             self._rotating = False
             # self.visuals_node.removeObject(self._temp_cam)
 
-        if event.button() == Qt.RightButton:
+        if event.button() == Qt.MouseButton.RightButton:
             self._panning = False
 
     def draw_spheres(self, positions, radii, colors, clear_existing=True):

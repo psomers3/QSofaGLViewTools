@@ -1,9 +1,18 @@
-from qtpy.QtCore import *
-from .QXboxController import QXboxController
+try:
+    from qtpy.QtWidgets import *
+    from qtpy.QtCore import *
+    from qtpy.QtGui import *
+except Exception as e:
+    from PyQt6.QtWidgets import *
+    from PyQt6.QtCore import *
+    from PyQt6.QtGui import *
+    Signal = pyqtSignal
+
 import numpy as np
 import scipy.spatial.transform as transform
 import time
 from QSofaGLViewTools import QSofaGLView
+from QSofaGLViewTools import QXboxController
 
 
 class QSofaViewXBoxController(QObject):

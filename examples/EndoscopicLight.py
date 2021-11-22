@@ -1,8 +1,15 @@
-from qtpy.QtCore import *
-from qtpy.QtWidgets import *
+try:
+    from qtpy.QtWidgets import *
+    from qtpy.QtCore import *
+    from qtpy.QtGui import *
+except Exception as e:
+    from PyQt6.QtWidgets import *
+    from PyQt6.QtCore import *
+    from PyQt6.QtGui import *
+    from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+    Signal = pyqtSignal
 from QSofaGLViewTools import QSofaGLView, QSofaViewKeyboardController
 import sys
-from qtpy.QtCore import QObject, QTimer, Signal
 import Sofa.Core as SCore
 import Sofa.Simulation as SSim
 from SofaRuntime import PluginRepository, importPlugin
@@ -122,7 +129,7 @@ class MainWindow(QMainWindow):
         # create an opengl view to display a node from sofa and control a camera
 
         self.sofa_sim.init_sim()  # initialize the scene
-        self.sofa_view = self.sofa_sim.viewer
+        self.sofa_view = self.sofa_sim.viewer  # type: QSofaGLView
         self.sofa_view.set_background_color([0,0,1,1])  # [1,1,1,1] for white
 
         # set the view to be the main widget of the window. In the future, this should be done in a layout
@@ -130,34 +137,24 @@ class MainWindow(QMainWindow):
 
         self.sofa_sim.animation_end.connect(self.sofa_view.update)  # set a qt signal to update the view after sim step
 
-    def keyPressEvent(self, QKeyEvent):
-        if QKeyEvent.key() == Qt.Key_Space:
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Space:
             if self.sofa_sim.is_animating:
                 self.sofa_sim.stop_sim()
             else:
                 self.sofa_sim.start_sim()
-        elif QKeyEvent.key() == Qt.Key_J:
+        elif event.key() == Qt.Key.Key_J:
             self.sofa_view.save_image("test.png")
-        elif QKeyEvent.key() == Qt.Key_R:
+        elif event.key() == Qt.Key.Key_R:
             self.sofa_sim.reset()
 
-        elif QKeyEvent.key() == Qt.Key_Escape:
+        elif event.key() == Qt.Key.Key_Escape:
             self.close()
 
 
 if __name__ == '__main__':
     app = QApplication(['Yo'])
     window = MainWindow()
-    # Unnecessarily make everything transparent because... well, just because  :)
-    window.setWindowFlags(
-        Qt.NoDropShadowWindowHint |
-        Qt.FramelessWindowHint |
-        Qt.WindowTitleHint |
-        Qt.WindowCloseButtonHint
-        )
-    window.showFullScreen()
     window.show()
-    window.setAttribute(Qt.WA_TranslucentBackground)  # Need to set underlying widgets transparent as well
-    window.sofa_view.set_background_color([0, 0, 0, 0])
-    window.sofa_view.make_viewer_transparent(True)
+    window.sofa_view.set_background_color([1, 1, 1, 0])
     sys.exit(app.exec())

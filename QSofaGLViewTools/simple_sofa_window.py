@@ -1,11 +1,21 @@
+try:
+    from qtpy.QtWidgets import *
+    from qtpy.QtCore import *
+    from qtpy.QtGui import *
+except Exception as e:
+    from PyQt6.QtWidgets import *
+    from PyQt6.QtCore import *
+    from PyQt6.QtGui import *
+    Signal = pyqtSignal
+
 from QSofaGLViewTools import QSofaGLView
-from qtpy.QtWidgets import QApplication, QMainWindow
-from qtpy.QtCore import Qt
 import threading
-import sys
 import Sofa
 
-QApplication.setAttribute(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+try:
+    QApplication.setAttribute(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+except TypeError as e:
+    pass
 
 
 def create_simple_window(main_function, node, camera_kargs=None):
@@ -38,6 +48,7 @@ def create_simple_window(main_function, node, camera_kargs=None):
                 self.viewer, self.camera, self.camera_dofs = QSofaGLView.create_view_and_camera(node, internal_refresh_freq=20)
             else:
                 self.viewer, self.camera, self.camera_dofs = QSofaGLView.create_view_and_camera(node, camera_kwargs=camera_kargs, internal_refresh_freq=20)
+            self.viewer.resizedGL.connect(lambda: Sofa.Simulation.updateVisual(node))
             self.setCentralWidget(self.viewer)
             self.viewer.close = self.close
 
@@ -45,7 +56,7 @@ def create_simple_window(main_function, node, camera_kargs=None):
     _main_window.show()
     _app_thread = threading.Thread(target=main_function, args=[node, _main_window.viewer], daemon=True)
     _app_thread.start()
-    _app.exec_()
+    _app.exec()
 
 
 

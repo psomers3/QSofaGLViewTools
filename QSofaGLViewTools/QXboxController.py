@@ -1,7 +1,16 @@
-from qtpy.QtCore import Signal, QObject
-import inputs
+try:
+    from qtpy.QtWidgets import *
+    from qtpy.QtCore import *
+    from qtpy.QtGui import *
+except Exception as e:
+    from PyQt6.QtWidgets import *
+    from PyQt6.QtCore import *
+    from PyQt6.QtGui import *
+    Signal = pyqtSignal
+
 import importlib
 import time
+import inputs
 
 
 class QXboxController(QObject):

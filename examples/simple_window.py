@@ -68,7 +68,7 @@ def main(node: Sofa.Core.Node, viewer: QSofaGLView):
         while time.time() - last < node.getDt():
             time.sleep(0.0001)
         Sofa.Simulation.animate(node, node.getDt())
-        Sofa.Simulation.updateVisual(node)  # idk why this isn't working right now.
+        # Sofa.Simulation.updateVisual(node)  # idk why this isn't working right now.
         last = time.time()
     input("\nPress enter to quit:")
     viewer.hide()
