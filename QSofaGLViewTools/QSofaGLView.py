@@ -499,7 +499,7 @@ class QSofaGLView(QOpenGLWidget):
             times = [float(re.findall('(\d+\.\d+).png', x)[0]) for x in images]
             frame = cv2.imread(images[0])
         else:
-            images = [x[1] for x in self._images]
+            images = [cv2.cvtColor(x[1], cv2.COLOR_BGR2RGB) for x in self._images]
             times = [x[0] for x in self._images]
             frame = images[0]
 
@@ -508,7 +508,7 @@ class QSofaGLView(QOpenGLWidget):
         height, width, layers = frame.shape
         video = cv2.VideoWriter(self._video_file, 0, fps, (width, height))
         if self._save_img:
-            [video.write(cv2.imread(image)) for image in images]
+            [video.write(cv2.cvtColor(cv2.imread(image), cv2.COLOR_BGR2RGB)) for image in images]
         else:
             [video.write(image) for image in images]
 
@@ -519,9 +519,9 @@ class QSofaGLView(QOpenGLWidget):
 
     def _rec_save_img(self):
         if self._save_img:
-            self.save_image(f'tmp_screenshots/{time.time()}.png', dtype=np.uint16)
+            self.save_image(f'tmp_screenshots/{time.time()}.png', dtype=np.uint8)
         else:
-            self._images.append((time.time(), self.get_screen_shot(dtype=np.uint16)))
+            self._images.append((time.time(), self.get_screen_shot(dtype=np.uint8)))
 
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         key = a0.key()

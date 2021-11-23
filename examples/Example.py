@@ -114,8 +114,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.sofa_view)
 
         self.sofa_sim.animation_end.connect(self.sofa_view.update)  # set a qt signal to update the view after sim step
+        self.recording = False
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key.Key_Space:
             if self.sofa_sim.is_animating:
                 self.sofa_sim.stop_sim()
@@ -123,8 +124,16 @@ class MainWindow(QMainWindow):
                 self.sofa_sim.start_sim()
         elif event.key() == Qt.Key.Key_J:
             self.sofa_view.save_image("test.png")
-        elif event.key() == Qt.Key.Key_R:
+        elif event.key() == Qt.Key.Key_R and not event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
             self.sofa_sim.reset()
+        elif event.key() == Qt.Key.Key_R and event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
+            if not self.recording:
+                print("starting recording")
+                self.sofa_view.start_recording()
+            else:
+                print("stopping recording")
+                self.sofa_view.stop_recording()
+            self.recording = not self.recording
 
         elif event.key() == Qt.Key.Key_Escape:
             self.close()
